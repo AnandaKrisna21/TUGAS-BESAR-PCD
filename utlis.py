@@ -34,58 +34,51 @@ def stackImages(imgArray,scale,lables=[]):
         #print(eachImgHeight)
         for d in range(0, rows):
             for c in range (0,cols):
-                cv2.rectangle(ver,(c*eachImgWidth,eachImgHeight*d),(c*eachImgWidth+len(lables[d][c])*13+27,30+eachImgHeight*d),(255,255,255),cv2.FILLED)
-                cv2.putText(ver,lables[d][c],(eachImgWidth*c+10,eachImgHeight*d+20),cv2.FONT_HERSHEY_COMPLEX,0.7,(255,0,255),2)
+                cv2.rectangle(ver,(c*eachImgWidth,eachImgHeight*d),(c*eachImgWidth+len(lables[d])*13+27,30+eachImgHeight*d),(255,255,255),cv2.FILLED)
+                cv2.putText(ver,lables[d],(eachImgWidth*c+10,eachImgHeight*d+20),cv2.FONT_HERSHEY_COMPLEX,0.7,(255,0,255),2)
     return ver
 
-def reorder(myPoints):
 
-    myPoints = myPoints.reshape((4, 2)) # REMOVE EXTRA BRACKET
-    print(myPoints)
-    myPointsNew = np.zeros((4, 1, 2), np.int32) # NEW MATRIX WITH ARRANGED POINTS
-    add = myPoints.sum(1)
-    print(add)
-    print(np.argmax(add))
-    myPointsNew[0] = myPoints[np.argmin(add)]  #[0,0]
-    myPointsNew[3] =myPoints[np.argmax(add)]   #[w,h]
-    diff = np.diff(myPoints, axis=1)
-    myPointsNew[1] =myPoints[np.argmin(diff)]  #[w,0]
-    myPointsNew[2] = myPoints[np.argmax(diff)] #[h,0]
-
-    return myPointsNew
 
 def rectContour(contours):
-
     rectCon = []
-    max_area = 0
     for i in contours:
         area = cv2.contourArea(i)
-        if area > 50:
-            peri = cv2.arcLength(i, True)
-            approx = cv2.approxPolyDP(i, 0.02 * peri, True)
+       #print("Area ",area)
+        if area >50:
+            peri = cv2.arcLength(i,True)
+            approx = cv2.approxPolyDP(i,0.02*peri,True)
+            # print("Per ", peri)
+            # print("Approx ", approx)
+            # print("Cornor ", len(approx))
             if len(approx) == 4:
                 rectCon.append(i)
-    rectCon = sorted(rectCon, key=cv2.contourArea,reverse=True)
-    #print(len(rectCon))
+    rectCon = sorted(rectCon,key=cv2.contourArea,reverse=True)
     return rectCon
 
+
+    
+
 def getCornerPoints(cont):
-    peri = cv2.arcLength(cont, True) # LENGTH OF CONTOUR
-    approx = cv2.approxPolyDP(cont, 0.02 * peri, True) # APPROXIMATE THE POLY TO GET CORNER POINTS
+    peri = cv2.arcLength(cont,True)
+    approx = cv2.approxPolyDP(cont,0.02*peri,True)
     return approx
 
+   
 def splitBoxes(img):
-    rows = np.vsplit(img,5)
-    boxes=[]
+    boxes = []
+    rows = np.vsplit(img,10) #baris
+    # cv2.imshow("row",rows[9])
     for r in rows:
-        cols= np.hsplit(r,5)
+        cols = np.hsplit(r,5)
         for box in cols:
             boxes.append(box)
+            #cv2.imshow("split",box)
     return boxes
 
-def drawGrid(img,questions=5,choices=5):
-    secW = int(img.shape[1]/questions)
-    secH = int(img.shape[0]/choices)
+def drawGrid(img,qNum,nChoices):
+    secW = int(img.shape[1])
+    secH = int(img.shape[0])
     for i in range (0,9):
         pt1 = (0,secH*i)
         pt2 = (img.shape[1],secH*i)
@@ -96,29 +89,42 @@ def drawGrid(img,questions=5,choices=5):
 
     return img
 
-def showAnswers(img,myIndex,grading,ans,questions=5,choices=5):
-     secW = int(img.shape[1]/questions)
-     secH = int(img.shape[0]/choices)
+def showAnswers(img,myIndex,grading,answers,qNum,nChoices):
+    secW = int(img.shape[1]// nChoices)
+    secH = int(img.shape[0]//qNum)
+    #print(secW)
+    #print(secH)
+    for x in range (0,qNum):
+        #choose box
+        myAns = myIndex[x]
+        cX = (myAns*secW)+secW//2
+        cY = (x*secH)+secH//2
+        print(cX)
+     
+        #choose coller
+        if grading[x] == 1:
+            myColor = (0,255,0) # green for correct ans
+        else: 
+            myColor = (0,0,255) # red for wrong ans
+            correctAns = answers[x]
+            cv2.circle(img,((correctAns*secW)+secW//2,(x*secH)+secH//2),20,(0,255,0),cv2.FILLED)
 
-     for x in range(0,questions):
-         myAns= myIndex[x]
-         cX = (myAns * secW) + secW // 2
-         cY = (x * secH) + secH // 2
-         if grading[x]==1:
-            myColor = (0,255,0)
-            #cv2.rectangle(img,(myAns*secW,x*secH),((myAns*secW)+secW,(x*secH)+secH),myColor,cv2.FILLED)
-            cv2.circle(img,(cX,cY),50,myColor,cv2.FILLED)
-         else:
-            myColor = (0,0,255)
-            #cv2.rectangle(img, (myAns * secW, x * secH), ((myAns * secW) + secW, (x * secH) + secH), myColor, cv2.FILLED)
-            cv2.circle(img, (cX, cY), 50, myColor, cv2.FILLED)
+        #draw circle
+        cv2.circle(img,(cX,cY),30,myColor,cv2.FILLED)
+    return img
 
-            # CORRECT ANSWER
-            myColor = (0, 255, 0)
-            correctAns = ans[x]
-            cv2.circle(img,((correctAns * secW)+secW//2, (x * secH)+secH//2),
-            20,myColor,cv2.FILLED)
+def reorder(myPoints):
+    myPoints = myPoints.reshape((4,2))
+    myPointsNew= np.zeros((4,1,2),np.int32)
 
-
-
-
+    add = myPoints.sum(1)
+    #print("poin", myPoints)
+    #print("add", add)
+    
+    myPointsNew[0] = myPoints[np.argmin(add)] # 0,0
+    myPointsNew[3] = myPoints[np.argmax(add)] # h,w
+    diff = np.diff(myPoints, axis=1)
+    myPointsNew[1] = myPoints[np.argmin(diff)] # w,0
+    myPointsNew[2] = myPoints[np.argmax(diff)] # 0,h
+    #print("diff",diff)
+    return myPointsNew
